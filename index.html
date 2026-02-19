@@ -2,119 +2,86 @@
 <html lang="pt">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>IFC Interactive Viewer</title>
-
+  <meta name="color-scheme" content="dark" />
   <style>
     :root{
-      --bg1:#040a16; --bg2:#0b1a3a;
-      --panel:rgba(17,24,39,.55);
-      --panel2:rgba(17,24,39,.35);
-      --stroke:rgba(255,255,255,.12);
-      --text:rgba(255,255,255,.88);
-      --muted:rgba(255,255,255,.66);
-      --btn:rgba(255,255,255,.08);
-      --btn2:rgba(255,255,255,.12);
-      --shadow:0 12px 40px rgba(0,0,0,.35);
-      --r:16px;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      --bg0:#061022; --panel:rgba(12,18,26,.55);
+      --stroke:rgba(255,255,255,.10);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.65);
+      --chip:rgba(255,255,255,.08);
+      --chip2:rgba(255,255,255,.12);
+      --good:#2ecc71; --warn:#f39c12; --bad:#e74c3c;
+      --r:14px;
     }
-    html,body{height:100%; margin:0;}
-    body{
-      background: radial-gradient(1200px 700px at 30% 20%, var(--bg2), var(--bg1));
-      color:var(--text);
-      overflow:hidden;
-    }
+    html,body{height:100%; margin:0; background:radial-gradient(1200px 800px at 25% 15%, #0b2b52, var(--bg0)); overflow:hidden; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;}
     #app{position:fixed; inset:0;}
     canvas{display:block; width:100%; height:100%;}
-    .topbar{
-      position:fixed; top:16px; left:16px; right:16px;
-      display:flex; gap:12px; align-items:center; justify-content:space-between;
-      pointer-events:none;
+
+    .topbar{position:fixed; top:16px; left:16px; right:16px; display:flex; justify-content:space-between; gap:12px; pointer-events:none;}
+    .badge{pointer-events:auto; display:inline-flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:var(--r);
+      background:var(--panel); border:1px solid var(--stroke); backdrop-filter: blur(10px);
+      box-shadow:0 10px 28px rgba(0,0,0,.28);
+      max-width:min(540px, 92vw);
     }
-    .brand{
-      pointer-events:auto;
-      display:flex; flex-direction:column; gap:2px;
-      padding:10px 12px; border-radius:999px;
-      background:linear-gradient(180deg,var(--panel),var(--panel2));
-      border:1px solid var(--stroke);
-      backdrop-filter: blur(10px);
-      box-shadow: var(--shadow);
-      max-width:min(560px, 92vw);
+    .badge .icon{width:28px; height:28px; border-radius:10px; display:grid; place-items:center; background:rgba(255,255,255,.06); border:1px solid var(--stroke); font-weight:800;}
+    .badge h1{font-size:13px; line-height:1.2; margin:0; color:var(--text); letter-spacing:.2px;}
+    .badge p{font-size:11px; margin:2px 0 0; color:var(--muted);}
+
+    .actions{pointer-events:auto; display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end;}
+    .btn{appearance:none; border:1px solid var(--stroke); background:var(--chip);
+      color:var(--text); padding:8px 10px; border-radius:12px; font-size:12px; cursor:pointer;
+      transition:transform .05s ease, background .15s ease, border-color .15s ease;
     }
-    .brand .title{font-weight:700; font-size:14px;}
-    .brand .sub{font-size:12px; color:var(--muted);}
-    .actions{
-      pointer-events:auto;
-      display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;
+    .btn:hover{background:var(--chip2); border-color:rgba(255,255,255,.18)}
+    .btn:active{transform:translateY(1px)}
+    .btn.primary{background:rgba(46,204,113,.12); border-color:rgba(46,204,113,.35)}
+
+    .panel{position:fixed; left:16px; bottom:16px; width:min(520px, calc(100vw - 32px));
+      background:var(--panel); border:1px solid var(--stroke); border-radius:16px; backdrop-filter: blur(10px);
+      box-shadow:0 10px 28px rgba(0,0,0,.28); padding:12px;
     }
-    .btn{
-      appearance:none; border:1px solid var(--stroke);
-      background:var(--btn); color:var(--text);
-      padding:8px 10px; border-radius:999px;
-      cursor:pointer; font-size:12px;
-      backdrop-filter: blur(10px);
+    .panel .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+    .panel .hint{margin-top:10px; color:var(--muted); font-size:11px; line-height:1.35;}
+    .panel .hint b{color:var(--text)}
+    .file{display:flex; gap:8px; align-items:center; flex:1 1 260px;}
+    input[type=file]{max-width:100%}
+    .pill{display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:12px; border:1px solid var(--stroke); background:rgba(255,255,255,.06); color:var(--text); font-size:12px;}
+
+    #toast{position:fixed; right:16px; bottom:16px; padding:10px 12px; border-radius:12px;
+      border:1px solid var(--stroke); background:rgba(0,0,0,.35); color:var(--text);
+      font-size:12px; max-width:min(420px, calc(100vw - 32px)); backdrop-filter: blur(10px);
+      box-shadow:0 10px 28px rgba(0,0,0,.28);
+      transform: translateY(12px); opacity:0; pointer-events:none; transition: all .18s ease;
+      white-space:pre-line;
     }
-    .btn:hover{background:var(--btn2);}
-    .btn.primary{border-color: rgba(34,197,94,.4); background: rgba(34,197,94,.18);}
-    .btn.primary:hover{background: rgba(34,197,94,.28);}
-    .bottom{
-      position:fixed; left:16px; bottom:16px; right:16px;
-      display:flex; align-items:flex-end; justify-content:space-between; gap:12px;
-      pointer-events:none;
-    }
-    .panel{
-      pointer-events:auto;
-      width:min(620px, 92vw);
-      padding:12px 12px 10px;
-      border-radius: var(--r);
-      background:linear-gradient(180deg,var(--panel),var(--panel2));
-      border:1px solid var(--stroke);
-      backdrop-filter: blur(10px);
-      box-shadow: var(--shadow);
-    }
-    .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
-    .hint{margin-top:8px; font-size:12px; color:var(--muted); line-height:1.35;}
-    #status{
-      pointer-events:auto;
-      padding:8px 10px;
-      border-radius: 999px;
-      background: rgba(0,0,0,.25);
-      border:1px solid var(--stroke);
-      font-size:12px;
-      color:var(--muted);
-      backdrop-filter: blur(10px);
-    }
-    input[type="file"]{display:none;}
-    @media (max-width: 640px){
-      .topbar{top:12px; left:12px; right:12px;}
-      .bottom{left:12px; right:12px; bottom:12px; flex-direction:column; align-items:stretch;}
-      #status{align-self:flex-end;}
+    #toast.show{transform: translateY(0); opacity:1;}
+    #toast.good{border-color:rgba(46,204,113,.35)}
+    #toast.warn{border-color:rgba(243,156,18,.35)}
+    #toast.bad{border-color:rgba(231,76,60,.38)}
+
+    #status{position:fixed; right:16px; bottom:16px; transform: translateY(-62px);}
+
+    @media (max-width:560px){
+      .topbar{top:12px; left:12px; right:12px}
+      .panel{left:12px; right:12px; bottom:12px; width:auto}
+      #toast{right:12px; bottom:12px}
+      #status{right:12px; bottom:12px; transform: translateY(-66px)}
     }
   </style>
-
-  <!-- Importmap: resolve "three" e "web-ifc-three" sem bundler (GitHub Pages friendly) -->
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-      "three/examples/jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-      "web-ifc": "https://unpkg.com/web-ifc@0.0.44/web-ifc-api.js",
-      "web-ifc-three": "https://unpkg.com/web-ifc-three@0.0.125/IFCLoader.js"
-    }
-  }
-  </script>
 </head>
-
 <body>
-  <div id="app">
-    <canvas id="c"></canvas>
-  </div>
+  <div id="app"></div>
 
   <div class="topbar">
-    <div class="brand">
-      <div class="title">IFC Interactive Viewer</div>
-      <div class="sub">Revit → IFC • abre IFC padrão e permite carregar outro IFC local</div>
+    <div class="badge">
+      <div class="icon">IFC</div>
+      <div>
+        <h1>IFC Interactive Viewer</h1>
+        <p>Revit → IFC • abre um IFC padrão • permite carregar outro ficheiro local</p>
+      </div>
     </div>
     <div class="actions">
       <button class="btn" id="resetBtn">Reset view</button>
@@ -124,231 +91,225 @@
     </div>
   </div>
 
-  <div class="bottom">
-    <div class="panel">
-      <div class="row">
-        <button class="btn" id="openBtn">Open IFC</button>
-        <label class="btn" for="fileInput">Escolher ficheiro</label>
-        <input id="fileInput" type="file" accept=".ifc,application/octet-stream" />
+  <div class="panel">
+    <div class="row">
+      <span class="pill">🧩 Open IFC</span>
+      <div class="file">
+        <input id="fileInput" type="file" accept=".ifc" />
         <button class="btn" id="clearBtn">Clear</button>
       </div>
-      <div class="hint">
-        • O modelo padrão <b>ALL_ACESS.ifc</b> abre automaticamente (se estiver na mesma pasta do <b>index.html</b>).<br/>
-        • Também podes arrastar e soltar um IFC na página ou escolher um ficheiro local.<br/>
-        • Ideal para LinkedIn: o cliente abre o link e pode carregar o IFC localmente.
-      </div>
+      <span class="pill" id="readyPill">Ready</span>
     </div>
-    <div id="status">Ready</div>
+    <div class="hint">
+      • O modelo padrão <b>ALL_ACESS.ifc</b> abre automaticamente (se estiver na mesma pasta do <b>index.html</b> no GitHub Pages).<br>
+      • Você também pode arrastar e soltar um IFC nesta página, ou clicar em <b>Escolher ficheiro</b>.<br>
+      • No GitHub Pages, o nome do ficheiro tem de bater exatamente (maiúsculas/minúsculas).
+    </div>
   </div>
 
+  <div id="status" class="pill">Carregando…</div>
+  <div id="toast"></div>
+
   <script type="module">
-    import * as THREE from "three";
-    import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-    import { IFCLoader } from "web-ifc-three";
+    // Imports diretos (sem importmap) -> menos pontos de falha
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+    import { IFCLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/IFCLoader.js';
 
-    const canvas = document.getElementById("c");
-    const statusEl = document.getElementById("status");
-    const setStatus = (msg) => (statusEl.textContent = msg);
+    const app = document.getElementById('app');
+    const toast = document.getElementById('toast');
+    const statusEl = document.getElementById('status');
+    const fileInput = document.getElementById('fileInput');
+    const readyPill = document.getElementById('readyPill');
 
-    // --- Renderer / scene
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    const resetBtn = document.getElementById('resetBtn');
+    const fitBtn = document.getElementById('fitBtn');
+    const bgBtn = document.getElementById('bgBtn');
+    const fsBtn = document.getElementById('fsBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    function showToast(msg, type='warn', ms=5200){
+      toast.className = '';
+      toast.classList.add('show', type);
+      toast.textContent = msg;
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(()=>toast.classList.remove('show'), ms);
+    }
+    function setStatus(msg){
+      statusEl.textContent = msg;
+      readyPill.textContent = msg;
+    }
+
+    // Three.js
+    const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false, powerPreference:'high-performance' });
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    app.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x061022);
 
-    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.05, 2000);
+    const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 2000);
     camera.position.set(10, 8, 12);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
+    controls.dampingFactor = 0.06;
     controls.target.set(0, 1, 0);
 
-    // Lights (evita modelo “preto”)
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x223344, 1.2));
-    const dir = new THREE.DirectionalLight(0xffffff, 1.0);
-    dir.position.set(6, 10, 4);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x223355, 0.75));
+    const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+    dir.position.set(10, 18, 8);
     scene.add(dir);
 
-    // Background toggle
-    let bgMode = 0;
-    function setBackground() {
-      if (bgMode === 0) scene.background = null;
-      if (bgMode === 1) scene.background = new THREE.Color(0x0b1020);
-      if (bgMode === 2) scene.background = new THREE.Color(0xffffff);
-    }
-    setBackground();
-
-    // Subtle grid
-    const grid = new THREE.GridHelper(40, 40, 0x335577, 0x223344);
-    grid.material.opacity = 0.22;
+    const grid = new THREE.GridHelper(40, 40, 0x223344, 0x112233);
     grid.material.transparent = true;
+    grid.material.opacity = 0.12;
     scene.add(grid);
 
-    // --- IFC Loader (web-ifc-three)
+    const modelRoot = new THREE.Group();
+    scene.add(modelRoot);
+
+    // IFC Loader
     const ifcLoader = new IFCLoader();
 
-    // MUST point to folder containing web-ifc.wasm
-    ifcLoader.ifcManager.setWasmPath("https://unpkg.com/web-ifc@0.0.44/");
-    // Workers for performance
-    ifcLoader.ifcManager.useWebWorkers(true, "https://unpkg.com/web-ifc@0.0.44/");
+    // FIX CRÍTICO: o WASM tem de vir do pacote web-ifc (exemplo oficial do three)
+    await ifcLoader.ifcManager.setWasmPath('https://cdn.jsdelivr.net/npm/web-ifc@0.0.36/', true);
 
-    let currentModel = null;
+    let currentIfc = null;
 
-    function clearModel() {
-      if (!currentModel) return;
-      scene.remove(currentModel);
-
-      currentModel.traverse?.((obj) => {
-        obj.geometry?.dispose?.();
-        if (obj.material) {
-          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-          mats.forEach((m) => m.dispose?.());
+    function clearModel(){
+      if(!currentIfc) return;
+      modelRoot.remove(currentIfc);
+      currentIfc.traverse(o=>{
+        o.geometry?.dispose?.();
+        if(o.material){
+          if(Array.isArray(o.material)) o.material.forEach(m=>m.dispose?.());
+          else o.material.dispose?.();
         }
       });
-
-      currentModel = null;
+      currentIfc = null;
+      renderer.render(scene, camera);
     }
 
-    function fitToObject(obj) {
+    function fitToObject(obj){
       const box = new THREE.Box3().setFromObject(obj);
-      if (box.isEmpty()) return;
-
-      const size = new THREE.Vector3();
-      const center = new THREE.Vector3();
-      box.getSize(size);
-      box.getCenter(center);
-
+      if(!isFinite(box.min.x) || !isFinite(box.max.x)) return;
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
-      const fov = (camera.fov * Math.PI) / 180;
-      let cameraZ = Math.abs((maxDim / 2) / Math.tan(fov / 2));
-      cameraZ *= 1.35;
+      const fov = camera.fov * Math.PI / 180;
+      let dist = (maxDim / 2) / Math.tan(fov / 2);
+      dist *= 1.35;
 
-      camera.position.set(center.x + cameraZ, center.y + cameraZ * 0.55, center.z + cameraZ);
-      camera.near = Math.max(0.01, maxDim / 200);
-      camera.far = Math.max(2000, maxDim * 10);
+      const dirVec = new THREE.Vector3(1, 0.6, 1).normalize();
+      camera.position.copy(center.clone().add(dirVec.multiplyScalar(dist)));
+      camera.near = Math.max(0.01, dist / 200);
+      camera.far = dist * 30;
       camera.updateProjectionMatrix();
-
       controls.target.copy(center);
       controls.update();
     }
 
-    function loadIFCFromURL(url) {
-      return new Promise((resolve, reject) => {
-        setStatus("Carregando IFC…");
-        ifcLoader.load(
-          url,
-          (ifcModel) => {
-            clearModel();
-            currentModel = ifcModel;
-            scene.add(ifcModel);
-            fitToObject(ifcModel);
-            setStatus("Ready");
-            resolve(ifcModel);
-          },
-          (xhr) => {
-            if (xhr?.total) {
-              const p = Math.round((xhr.loaded / xhr.total) * 100);
-              setStatus(`Carregando… ${p}%`);
-            } else {
-              setStatus("Carregando…");
-            }
-          },
-          (err) => {
-            console.error(err);
-            setStatus("Erro ao carregar IFC (ver console)");
-            reject(err);
-          }
+    async function loadIFCFromUrl(url){
+      setStatus('Carregando IFC…');
+      try{
+        const ifcModel = await new Promise((resolve, reject)=>{
+          ifcLoader.load(url, resolve, undefined, reject);
+        });
+        clearModel();
+        currentIfc = ifcModel;
+        modelRoot.add(ifcModel);
+        fitToObject(ifcModel);
+        setStatus('Ready');
+        showToast('IFC carregado com sucesso.', 'good', 2500);
+      }catch(e){
+        console.error(e);
+        setStatus('Erro');
+        showToast(
+          'Não foi possível carregar o IFC.\n' +
+          '• Confirme que ALL_ACESS.ifc está na mesma pasta do index.html\n' +
+          '• Em file:// o IFC padrão não carrega: use GitHub Pages (https://)\n' +
+          'Detalhe: ' + (e?.message || e),
+          'bad', 9000
         );
-      });
-    }
-
-    async function loadIFCFile(file) {
-      // Blob URL evita CORS e funciona no GitHub Pages
-      const blobURL = URL.createObjectURL(file);
-      try {
-        await loadIFCFromURL(blobURL);
-      } finally {
-        URL.revokeObjectURL(blobURL);
       }
     }
 
-    const DEFAULT_IFC = "ALL_ACESS.ifc";
-
-    async function tryLoadDefault() {
-      try {
-        setStatus("Verificando IFC padrão…");
-        // HEAD dá feedback “limpo” se o ficheiro não estiver acessível
-        const res = await fetch(DEFAULT_IFC, { method: "HEAD" });
-        if (!res.ok) throw new Error(`HEAD ${res.status}`);
-        await loadIFCFromURL(DEFAULT_IFC);
-      } catch (e) {
-        console.warn("Default IFC not loaded:", e);
-        setStatus("Ready (IFC padrão não encontrado)");
-      }
+    async function loadIFCFromFile(file){
+      if(!file) return;
+      const url = URL.createObjectURL(file);
+      await loadIFCFromUrl(url);
+      URL.revokeObjectURL(url);
     }
 
-    // --- UI events
-    document.getElementById("openBtn").addEventListener("click", () => document.getElementById("fileInput").click());
-    document.getElementById("fileInput").addEventListener("change", async (ev) => {
-      const file = ev.target.files?.[0];
-      if (!file) return;
-      await loadIFCFile(file);
-      ev.target.value = "";
+    // UI
+    fileInput.addEventListener('change', (ev)=>{
+      const f = ev.target.files?.[0];
+      loadIFCFromFile(f);
+      ev.target.value = '';
     });
 
-    document.getElementById("clearBtn").addEventListener("click", () => {
-      clearModel();
-      setStatus("Ready");
-    });
-
-    document.getElementById("fitBtn").addEventListener("click", () => {
-      if (currentModel) fitToObject(currentModel);
-    });
-
-    document.getElementById("resetBtn").addEventListener("click", () => {
-      controls.reset();
-      camera.position.set(10, 8, 12);
-      controls.target.set(0, 1, 0);
-      controls.update();
-    });
-
-    document.getElementById("bgBtn").addEventListener("click", () => {
-      bgMode = (bgMode + 1) % 3;
-      setBackground();
-    });
-
-    document.getElementById("fsBtn").addEventListener("click", async () => {
-      try {
-        if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
-        else await document.exitFullscreen();
-      } catch (_) {}
-    });
-
-    // Drag & drop
-    window.addEventListener("dragover", (e) => e.preventDefault());
-    window.addEventListener("drop", async (e) => {
+    window.addEventListener('dragover', (e)=>e.preventDefault());
+    window.addEventListener('drop', (e)=>{
       e.preventDefault();
-      const file = e.dataTransfer?.files?.[0];
-      if (file && file.name.toLowerCase().endsWith(".ifc")) await loadIFCFile(file);
+      const f = e.dataTransfer?.files?.[0];
+      if(f && (f.name||'').toLowerCase().endsWith('.ifc')) loadIFCFromFile(f);
+      else showToast('Solte um ficheiro .ifc válido.', 'warn');
     });
 
-    // Resize
-    window.addEventListener("resize", () => {
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
+    resetBtn.addEventListener('click', ()=>{
+      if(currentIfc) fitToObject(currentIfc);
+      else {
+        camera.position.set(10,8,12);
+        controls.target.set(0,1,0);
+        controls.update();
+      }
     });
+    fitBtn.addEventListener('click', ()=>{ if(currentIfc) fitToObject(currentIfc); });
 
-    // Loop
-    renderer.setAnimationLoop(() => {
-      controls.update();
+    let bgDark = true;
+    bgBtn.addEventListener('click', ()=>{
+      bgDark = !bgDark;
+      scene.background = new THREE.Color(bgDark ? 0x061022 : 0x0f1724);
       renderer.render(scene, camera);
     });
 
-    // Start
-    await tryLoadDefault();
+    fsBtn.addEventListener('click', async ()=>{
+      try{
+        if(!document.fullscreenElement) await document.documentElement.requestFullscreen();
+        else await document.exitFullscreen();
+      }catch{
+        showToast('Fullscreen não suportado.', 'warn');
+      }
+    });
+
+    clearBtn.addEventListener('click', ()=>{
+      clearModel();
+      setStatus('Ready');
+      showToast('Modelo removido.', 'warn', 2200);
+    });
+
+    addEventListener('resize', ()=>{
+      camera.aspect = innerWidth/innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    (function tick(){
+      controls.update();
+      renderer.render(scene, camera);
+      requestAnimationFrame(tick);
+    })();
+
+    // Auto-load IFC padrão
+    if(location.protocol === 'file:'){
+      setStatus('Ready');
+      showToast('Abrindo via file://. O IFC padrão não carrega automaticamente.\nUse GitHub Pages (https://) ou carregue um IFC local.', 'warn', 9000);
+    } else {
+      loadIFCFromUrl('ALL_ACESS.ifc');
+    }
   </script>
 </body>
 </html>
