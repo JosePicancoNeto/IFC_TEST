@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IFC Viewer (Revit) • Upload local</title>
+  <style>
+    :root{
+      --bg:#050914;
+      --panel:rgba(255,255,255,.06);
+      --panel2:rgba(255,255,255,.10);
+      --text:rgba(255,255,255,.90);
+      --muted:rgba(255,255,255,.65);
+      --accent:#22c55e;
+      --danger:#ef4444;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius:16px;
+      --radius2:22px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    }
+    html,body{height:100%;margin:0;background:radial-gradient(1200px 900px at 40% 20%, #0b1640 0%, var(--bg) 65%);color:var(--text);font-family:var(--sans);}
+    #app{position:fixed;inset:0;display:flex;flex-direction:column;}
+    #canvas{flex:1;min-height:0;display:block;}
+
+    .topbar{position:absolute;left:18px;top:18px;display:flex;gap:10px;align-items:center;z-index:10}
+    .badge{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:999px;background:linear-gradient(180deg, var(--panel2), var(--panel));backdrop-filter: blur(10px);box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.08)}
+    .logo{width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.10);display:grid;place-items:center;font-weight:800}
+    .badge b{font-size:13px;line-height:1}
+    .badge small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+
+    .actions{position:absolute;right:18px;top:18px;display:flex;gap:10px;z-index:10;flex-wrap:wrap;justify-content:flex-end}
+    .btn{appearance:none;border:1px solid rgba(255,255,255,.10);background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));color:var(--text);padding:10px 12px;border-radius:999px;font-size:12px;cursor:pointer;backdrop-filter: blur(10px);box-shadow:var(--shadow)}
+    .btn:hover{border-color:rgba(255,255,255,.22)}
+    .btn.primary{border-color:rgba(34,197,94,.50);background:linear-gradient(180deg, rgba(34,197,94,.22), rgba(34,197,94,.10))}
+
+    .dock{position:absolute;left:18px;bottom:18px;z-index:10;max-width:min(720px, calc(100vw - 36px));}
+    .panel{background:linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.06));border:1px solid rgba(255,255,255,.10);backdrop-filter: blur(12px);
+      border-radius:var(--radius2);box-shadow:var(--shadow);padding:14px 14px 12px;}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .file{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    input[type=file]{display:none}
+    .labelBtn{display:inline-flex;align-items:center;gap:10px}
+    .hint{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.35}
+    .hint code{font-family:var(--mono);font-size:11px;background:rgba(0,0,0,.25);padding:2px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.10)}
+
+    .toast{position:absolute;right:18px;bottom:18px;z-index:10;max-width:min(420px, calc(100vw - 36px));}
+    .status{background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));border:1px solid rgba(255,255,255,.10);
+      border-radius:14px;backdrop-filter: blur(10px);box-shadow:var(--shadow);padding:10px 12px;display:flex;gap:10px;align-items:flex-start}
+    .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);margin-top:5px;box-shadow:0 0 0 6px rgba(34,197,94,.15)}
+    .dot.err{background:var(--danger);box-shadow:0 0 0 6px rgba(239,68,68,.15)}
+    .status b{font-size:12px}
+    .status small{display:block;color:var(--muted);font-size:11px;margin-top:2px;line-height:1.25}
+
+    /* Mobile tweaks */
+    @media (max-width: 720px){
+      .actions{left:18px;right:18px;top:auto;bottom:110px;justify-content:flex-start}
+      .btn{padding:9px 10px}
+      .dock{left:12px;bottom:12px;max-width:calc(100vw - 24px)}
+      .toast{right:12px;bottom:12px}
+      .topbar{left:12px;top:12px}
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="topbar">
+      <div class="badge">
+        <div class="logo">IFC</div>
+        <div>
+          <b>Interactive IFC Viewer</b>
+          <small>Revit → IFC • upload local (sem link)</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="resetBtn">Reset view</button>
+      <button class="btn" id="fitBtn">Fit model</button>
+      <button class="btn" id="bgBtn">Toggle background</button>
+      <button class="btn primary" id="fsBtn">Fullscreen</button>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <div class="dock">
+      <div class="panel">
+        <div class="row file">
+          <div class="badge" style="box-shadow:none">
+            <div class="logo" style="font-size:12px">⬆</div>
+            <div>
+              <b>Open IFC</b>
+              <small>Escolher ficheiro local</small>
+            </div>
+          </div>
+          <label class="btn labelBtn" for="fileInput">Escolher ficheiro</label>
+          <input id="fileInput" type="file" accept=".ifc" />
+          <button class="btn" id="clearBtn" title="Remove o modelo e limpa a cena">Clear</button>
+        </div>
+        <div class="hint">
+          • O modelo padrão <code>ALL_ACESS.ifc</code> abre automaticamente (se estiver na mesma pasta do HTML no GitHub Pages).<br/>
+          • Também pode arrastar e soltar um IFC nesta página.<br/>
+          • Para LinkedIn: coloque o link desta página no post e peça ao cliente para abrir o IFC no browser.
+        </div>
+      </div>
+    </div>
+
+    <div class="toast">
+      <div class="status">
+        <div class="dot" id="statusDot"></div>
+        <div>
+          <b id="statusTitle">Ready</b>
+          <small id="statusText">Abra um IFC. Use mouse/touch para orbitar/zoom/pan.</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPORTANT: this file is 100% self-contained (no local JS files). It only relies on CDN modules. -->
+  <script type="module">
+    // Use UNPKG for stability on GitHub Pages (avoids some CDN CORS/case pitfalls)
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+    import { IFCLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/IFCLoader.js';
+
+    const DEFAULT_IFC_URL = './ALL_ACESS.ifc'; // keep exact filename/case
+
+    const canvas = document.getElementById('canvas');
+    const resetBtn = document.getElementById('resetBtn');
+    const fitBtn = document.getElementById('fitBtn');
+    const bgBtn = document.getElementById('bgBtn');
+    const fsBtn = document.getElementById('fsBtn');
+    const fileInput = document.getElementById('fileInput');
+    const clearBtn = document.getElementById('clearBtn');
+
+    const statusDot = document.getElementById('statusDot');
+    const statusTitle = document.getElementById('statusTitle');
+    const statusText = document.getElementById('statusText');
+
+    function setStatus(title, text, isError=false){
+      statusTitle.textContent = title;
+      statusText.textContent = text;
+      statusDot.classList.toggle('err', !!isError);
+    }
+
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:false, powerPreference:'high-performance' });
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    // Scene
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x050914);
+
+    // Camera
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 5000);
+    camera.position.set(12, 9, 12);
+
+    // Controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.target.set(0, 0, 0);
+
+    // Lights
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x223355, 1.05);
+    scene.add(hemi);
+    const dir = new THREE.DirectionalLight(0xffffff, 1.15);
+    dir.position.set(10, 20, 8);
+    dir.castShadow = false;
+    scene.add(dir);
+
+    // Subtle ground reference
+    const ground = new THREE.GridHelper(40, 40, 0x1b2a55, 0x101b3a);
+    ground.position.y = -0.001;
+    ground.material.opacity = 0.22;
+    ground.material.transparent = true;
+    scene.add(ground);
+
+    // IFC Loader
+    const ifcLoader = new IFCLoader();
+    // IMPORTANT: WASM path must be CORS-friendly and include trailing slash.
+    ifcLoader.ifcManager.setWasmPath('https://cdn.jsdelivr.net/npm/web-ifc@0.0.54/', true);
+
+    // Current model
+    let current = null;
+
+    function clearScene(){
+      if(!current) return;
+      scene.remove(current);
+      current.traverse(obj=>{
+        if(obj.geometry) obj.geometry.dispose?.();
+        if(obj.material){
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          mats.forEach(m=>{
+            m.map?.dispose?.();
+            m.dispose?.();
+          });
+        }
+      });
+      current = null;
+      setStatus('Ready', 'Cena limpa. Abra um IFC.');
+    }
+
+    function fitToObject(obj){
+      const box = new THREE.Box3().setFromObject(obj);
+      if(!isFinite(box.min.x) || !isFinite(box.max.x)) return;
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+
+      const fov = camera.fov * (Math.PI/180);
+      let dist = (maxDim/2) / Math.tan(fov/2);
+      dist *= 1.25;
+
+      const dir = new THREE.Vector3(1, 0.7, 1).normalize();
+      camera.position.copy(center.clone().add(dir.multiplyScalar(dist)));
+      camera.near = Math.max(0.01, dist/100);
+      camera.far = Math.max(5000, dist*10);
+      camera.updateProjectionMatrix();
+
+      controls.target.copy(center);
+      controls.update();
+    }
+
+    async function openIfcUrl(url, label){
+      setStatus('Loading…', `A abrir IFC: ${label || url} …`);
+      try{
+        const model = await ifcLoader.loadAsync(url);
+        if(current) clearScene();
+        // Force basic material properties for visibility
+        model.traverse(o=>{
+          if(o.material){
+            const mats = Array.isArray(o.material) ? o.material : [o.material];
+            mats.forEach(m=>{ m.transparent = false; m.opacity = 1.0; });
+          }
+        });
+        current = model;
+        scene.add(model);
+        fitToObject(model);
+        setStatus('Ready', 'Modelo carregado.');
+      }catch(err){
+        console.error(err);
+        setStatus('Error', 'Falha ao abrir IFC. Verifique o ficheiro e tente novamente.', true);
+      }
+    }
+
+    async function openIfcFile(file){
+      if(!file) return;
+      const url = URL.createObjectURL(file);
+      await openIfcUrl(url, file.name);
+      // keep url alive while model is displayed
+    }
+
+    // Drag & drop
+    window.addEventListener('dragover', (e)=>{ e.preventDefault(); });
+    window.addEventListener('drop', async (e)=>{
+      e.preventDefault();
+      const file = [...(e.dataTransfer?.files || [])].find(f=>f.name.toLowerCase().endsWith('.ifc'));
+      if(file) await openIfcFile(file);
+    });
+
+    fileInput.addEventListener('change', async (e)=>{
+      const file = e.target.files?.[0];
+      await openIfcFile(file);
+    });
+
+    clearBtn.addEventListener('click', ()=>{
+      fileInput.value = '';
+      clearScene();
+    });
+
+    resetBtn.addEventListener('click', ()=>{
+      camera.position.set(12, 9, 12);
+      controls.target.set(0, 0, 0);
+      controls.update();
+    });
+
+    fitBtn.addEventListener('click', ()=>{
+      if(current) fitToObject(current);
+    });
+
+    bgBtn.addEventListener('click', ()=>{
+      const isDark = scene.background?.getHex?.() === 0x050914;
+      scene.background = new THREE.Color(isDark ? 0xf5f7fb : 0x050914);
+    });
+
+    fsBtn.addEventListener('click', async ()=>{
+      if(!document.fullscreenElement){
+        await document.documentElement.requestFullscreen?.();
+      } else {
+        await document.exitFullscreen?.();
+      }
+    });
+
+    // Resize
+    function onResize(){
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', onResize);
+
+    // Render loop
+    function animate(){
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Auto-load default IFC on open (if present)
+    (async ()=>{
+      try{
+        // Quick HEAD check to avoid console noise if file doesn't exist
+        const r = await fetch(DEFAULT_IFC_URL, { method:'HEAD', cache:'no-store' });
+        if(r.ok){
+          await openIfcUrl(DEFAULT_IFC_URL, 'ALL_ACESS.ifc');
+        } else {
+          setStatus('Ready', 'Modelo padrão não encontrado. Abra um IFC local para visualizar.');
+        }
+      }catch{
+        setStatus('Ready', 'Modelo padrão não encontrado. Abra um IFC local para visualizar.');
+      }
+    })();
+
+    // Helpful diagnostics
+    window.__ifcViewerDebug = { THREE, IFCLoader, ifcLoader };
+  </script>
+</body>
+</html>
